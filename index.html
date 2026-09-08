@@ -19,6 +19,7 @@
 <div class="field"><label>Barème de rémunération</label><select id="scale"><option value="2025">Barème 2025 — référence</option><option value="2026" selected>Barème 2026 — SNB 543,18 €</option></select></div>
 <div class="row"><div class="field"><label>Premier jour de travail en mer</label><select id="first"><option value="1">Lundi</option><option value="2">Mardi</option><option value="3">Mercredi</option><option value="4">Jeudi</option><option value="5">Vendredi</option><option value="6">Samedi</option><option value="0">Dimanche</option></select></div><div class="field"><label>Nombre de jours travaillés en mer</label><select id="days"></select></div></div>
 <div class="row"><div class="field" id="usualWrap"><label>Durée journalière habituelle ATT</label><input id="usual" type="number" min="1" max="12" step="0.1" value="8"></div><div class="field"><label>Jours fériés dans la période de repos</label><input id="holidays" type="number" min="0" max="14" step="1" value="0"></div></div>
+<div class="field" id="workedWrap"><label>Heures réellement travaillées par jour en mer</label><input id="worked" type="number" min="1" max="14" step="0.1" value="12"><div class="desc">12 h maximum en situation normale · jusqu’à 14 h uniquement en cas d’aléa de transport maritime.</div></div>
 <div class="checks"><div class="check"><input id="sleep" type="checkbox" checked><label for="sleep">Couchage en mer</label></div><div class="check"><input id="igd" type="checkbox"><label for="igd">Éligible à l’IGD — PERS 691</label></div></div>
 <div class="row3"><div class="field"><label>NR</label><select id="nr"></select></div><div class="field"><label>Échelon</label><select id="ech"></select></div><div class="field"><label>Majoration résidentielle</label><select id="mr"><option value="0.24">24 %</option><option value="0.245" selected>24,5 %</option><option value="0.25">25 %</option></select></div></div>
 <div class="statstrip"><div><span>Salaire brut estimé</span><b id="salary">—</b></div><div><span>Taux horaire brut</span><b id="hourly">—</b></div><div><span>Organisation</span><b id="cycle">—</b></div></div>
@@ -47,15 +48,15 @@ function annualPrime(days){if(days>=30)return 2000;if(days>=20)return 1000;if(da
 function calc(){
  const d=+$('days').value,f=+$('first').value,w=$('work').value,isATT=w==='ATT35',snb=$('scale').value==='2026'?543.18:540.48;
  const salary=snb*(nrCoeff[$('nr').value]/100)*(1+ +$('mr').value)*echCoeff[$('ech').value],hourly=salary/151.67;
- const usual=Math.min(12,Math.max(0,+$('usual').value||8)),holidays=Math.max(0,+$('holidays').value||0);
+ const usual=Math.min(12,Math.max(0,+$('usual').value||8)),worked=Math.min(14,Math.max(1,+$('worked').value||12)),holidays=Math.max(0,+$('holidays').value||0);
  $('salary').textContent=euro(salary);$('hourly').textContent=dec(hourly)+' €/h';$('cycle').textContent=d>=6?d+' j travail + '+d+' j repos':'activité de '+d+' j';
- $('usualWrap').style.display=isATT?'block':'none';$('annualWrap').style.display=isATT?'none':'block';$('annualBox').style.display=isATT?'none':'block';
+ $('usualWrap').style.display=isATT?'block':'none';$('workedWrap').style.display=isATT?'block':'none';$('annualWrap').style.display=isATT?'none':'block';$('annualBox').style.display=isATT?'none':'block';
  let raw=0,weighted=0,sundaysWorked=0;
  for(let i=0;i<d;i++){
    const day=dow(f,i);
-   if(day===0){raw+=12;weighted+=12*1.75;sundaysWorked++}
-   else if(day===6){raw+=12;weighted+=12*1.50}
-   else{const hs=Math.max(0,12-usual);raw+=hs;weighted+=hs*1.50}
+   if(day===0){raw+=worked;weighted+=worked*1.75;sundaysWorked++}
+   else if(day===6){raw+=worked;weighted+=worked*1.50}
+   else{const hs=Math.max(0,worked-usual);raw+=hs;weighted+=hs*1.50}
  }
  let p140=0,p110=0;
  if($('sleep').checked){p140=Math.max(0,d-1);p110=1}else p110=d;
@@ -80,7 +81,7 @@ function calc(){
    restText=d>=6?d+' jours de repos · '+dec(fjExtra(d))+' j de repos comptés travaillés au forfait':d>=4?'3 jours de repos consécutifs':'Pas de repos spécifique de 3 jours';
    $('controlTitle').textContent='Contrôle du calcul forfait jours';$('m1l').textContent='Jours en mer';$('m2l').textContent='Jours décomptés au forfait';$('m3l').textContent='Repos comptés travaillés';$('raw').textContent=dec(d)+' j';$('weighted').textContent=dec(counted)+' j';$('paid').textContent=dec(fjExtra(d))+' j';
    const ap=annualPrime(Math.max(0,+$('annualDays').value||0));$('annualPrime').textContent=euro(ap);$('annualText').textContent=ap===0?'Aucune prime annuelle acquise pour l’instant : seuil à 10 journées d’activité en mer.':ap===500?'Seuil atteint : au moins 10 journées d’activité en mer sur l’année civile.':ap===1000?'Seuil atteint : au moins 20 journées d’activité en mer sur l’année civile.':'Seuil atteint : au moins 30 journées d’activité en mer sur l’année civile.';
-   $('alertBox').innerHTML='<b>Forfait jours :</b> correction appliquée : pour les cycles de 6 à 14 jours, seuls les jours de repos expressément considérés comme travaillés par l’accord sont ajoutés au forfait. Les dimanches travaillés ne sont plus ajoutés une seconde fois.';
+   $('alertBox').innerHTML='<b>Forfait jours :</b> correction appliquée : pour les cycles de 6 à 14 jours, seuls les jours de repos expressément considérés comme travaillés par l’accord sont ajoutés au forfait. Les dimanches travaillés ne sont plus ajoutés une seconde fois. Pour les activités de 4 ou 5 jours, les 3 jours de repos sont affichés sans valorisation financière supplémentaire, faute de disposition explicite dans le projet d’accord.';
    test=d>=6?'Accord : '+d+' jours travaillés + '+dec(fjExtra(d))+' jours de repos considérés travaillés = '+dec(counted)+' jours décomptés au forfait.':'Pour 1 à 5 jours, l’accord ne prévoit pas de jours de repos considérés comme travaillés au titre de la mesure d’attractivité des cycles.';
  }
  $('total').textContent=euro(total);$('total2').textContent=euro(total);$('perDay').textContent='soit '+euro(total/d)+' par jour en mer pour ce cycle';$('rest').textContent=restText;
